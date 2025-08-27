@@ -1,147 +1,80 @@
 window.onload = inicio;
-var videos = ["video1.mp4", "video2.mp4"];
+
+// URL base (Render te dará algo como https://tuapp.onrender.com)
+const RENDER_URL = window.location.origin;
+
+// Lista de videos que servirás desde server.js
+var videos = [
+  `${RENDER_URL}/video/video1.mp4`,
+  `${RENDER_URL}/video/video2.mp4`
+];
+
 var vid;
-var orden = [];
 var videoActual = 0;
-var tooltip;
 
 function inicio() {
-    vid = document.querySelector("video");
-    vid.src = `videos/${videos[videoActual]}`;
-    document.querySelector(".play").onclick = play;
-    document.querySelector(".volumen").onclick = volumen;
-    document.querySelector(".siguiente").onclick = siguiente;
-    document.querySelector(".reiniciar").onclick = reiniciar;
-    document.querySelector(".pantallacompleta").onclick = pantallacompleta;
-    document.querySelector(".barra1").onclick = buscar;
+  vid = document.querySelector("video");
+  vid.src = videos[videoActual];
 
-    // crear tooltip
-    tooltip = document.createElement("div");
-    tooltip.className = "tooltip";
-    tooltip.textContent = "00:00";
-    document.querySelector(".barra1").appendChild(tooltip);
-
-    // eventos para tooltip
-    document.querySelector(".barra1").addEventListener("mousemove", mostrarTooltip);
-    document.querySelector(".barra1").addEventListener("mouseleave", () => {
-        tooltip.style.display = "none";
-    });
-
-    // reproducir o pausar con clic en el video
-    vid.onclick = togglePlay;
-
-    // reproducir o pausar con barra espaciadora
-    document.addEventListener("keydown", function(e) {
-        if (e.code === "Space") {
-            e.preventDefault(); // evita scroll
-            togglePlay();
-        }
-    });
-
-    reordenar();
-    vid.ontimeupdate = actualizar;
-    vid.onloadeddata = actualizar;
-}
-
-function play() {
-    togglePlay();
-    document.querySelector(".play").src = vid.paused ? "img/play.svg" : "img/pausa.svg";
-}
-
-function togglePlay() {
+  // Botón Play / Pause
+  document.querySelector(".play").onclick = function () {
     if (vid.paused) {
-        vid.play();
-        document.querySelector(".play").src = "img/pausa.svg";
+      vid.play();
+      this.src = "img/pause.svg"; // cambia el ícono
     } else {
-        vid.pause();
-        document.querySelector(".play").src = "img/play.svg";
+      vid.pause();
+      this.src = "img/play.svg"; // vuelve al ícono de play
     }
-}
+  };
 
-function volumen() {
-    vid.volume = !vid.volume;
-    this.src = `img/volumen${vid.volume}.svg`;
-}
-
-function reordenar() {
-    for (v of videos) {
-        do {
-            var azar = Math.floor(Math.random() * videos.length);
-        } while (orden.indexOf(azar) >= 0);
-        orden.push(azar);
-    }
-    reproducir();
-}
-
-function reproducir() {
-    let videoseleccionado = orden[videoActual];
-    vid.src = `videos/${videos[videoseleccionado]}`;
+  // Botón Siguiente
+  document.querySelector(".siguiente").onclick = function () {
+    videoActual = (videoActual + 1) % videos.length;
+    vid.src = videos[videoActual];
     vid.play();
-}
+    document.querySelector(".play").src = "img/pause.svg";
+  };
 
-function siguiente() {
-    videoActual++;
-    if (videoActual >= videos.length) {
-        videoActual = 0;
-    }
-    reproducir();
-}
-
-function reiniciar() {
+  // Botón Reiniciar
+  document.querySelector(".reiniciar").onclick = function () {
     vid.currentTime = 0;
-}
+    vid.play();
+    document.querySelector(".play").src = "img/pause.svg";
+  };
 
-function pantallacompleta() {
-    if (!document.fullscreenElement) {
-        if (vid.requestFullscreen) {
-            vid.requestFullscreen();
-        } else if (vid.webkitRequestFullscreen) { // Safari
-            vid.webkitRequestFullscreen();
-        } else if (vid.msRequestFullscreen) { // IE/Edge
-            vid.msRequestFullscreen();
-        }
+  // Botón Volumen (mute/unmute)
+  document.querySelector(".volumen").onclick = function () {
+    vid.muted = !vid.muted;
+    if (vid.muted) {
+      this.src = "img/volumen0.svg"; // ícono mute
     } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-            document.msExitFullscreen();
-        }
+      this.src = "img/volumen1.svg"; // ícono volumen normal
     }
-}
+  };
 
-function actualizar() {
-    document.querySelector(".estado").innerHTML = `${conversion(vid.currentTime)}/${conversion(vid.duration)}`;
-    let porcentaje = (100 * vid.currentTime) / vid.duration;
-    document.querySelector(".barra2").style.width = `${porcentaje}%`;
-}
+  // Pantalla completa
+  document.querySelector(".pantallacompleta").onclick = function () {
+    if (!document.fullscreenElement) {
+      vid.requestFullscreen();
+      this.src = "img/reducir.svg"; // ícono de salir
+    } else {
+      document.exitFullscreen();
+      this.src = "img/ampliar.svg"; // ícono de entrar
+    }
+  };
 
-function conversion(segundos) {
-    if (isNaN(segundos)) return "00:00";
-    let d = new Date(segundos * 1000);
-    let segundo = (d.getSeconds() <= 9) ? "0" + d.getSeconds() : d.getSeconds();
-    let minuto = (d.getMinutes() <= 9) ? "0" + d.getMinutes() : d.getMinutes();
-    return `${minuto}:${segundo}`;
-}
+  // Actualizar barra de progreso
+  vid.ontimeupdate = function () {
+    let barra = document.querySelector(".barra2");
+    let porcentaje = (vid.currentTime / vid.duration) * 100;
+    barra.style.width = porcentaje + "%";
+  };
 
-function buscar(e) {
-    let clickBarra = e.offsetX;
-    let anchoNavegador = document.querySelector(".barra1").offsetWidth;
-    let poncentaje = (100 * clickBarra) / anchoNavegador;
-    let posicion = Math.floor(vid.duration * (poncentaje / 100));
-    vid.currentTime = posicion;
-}
-
-function mostrarTooltip(e) {
-    let barra = document.querySelector(".barra1");
-    let anchoNavegador = barra.offsetWidth;
-    let posicionX = e.offsetX;
-    let porcentaje = (100 * posicionX) / anchoNavegador;
-    let segundos = Math.floor(vid.duration * (porcentaje / 100));
-
-    tooltip.style.display = "block";
-    tooltip.textContent = conversion(segundos);
-
-    tooltip.style.left = `${posicionX}px`;
+  // Click en barra para adelantar/retroceder
+  document.querySelector(".barra1").onclick = function (e) {
+    let ancho = this.offsetWidth;
+    let posicion = e.offsetX;
+    let porcentaje = posicion / ancho;
+    vid.currentTime = porcentaje * vid.duration;
+  };
 }
